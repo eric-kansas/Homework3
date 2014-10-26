@@ -14,7 +14,20 @@ public class Element : MonoBehaviour {
 			GetComponent<SpriteRenderer>().sprite = value;
 			_sprite = value;
 		}
-	}	
+	}
+
+	private string _type;
+	public string Type {
+		get { return _type; }
+		set { _type = value; }
+	}
+
+	bool isAnimating = false;
+	Vector3 endPoint;
+	float duration = 0.25f;
+	
+	private Vector3 startPoint ;
+	private float startTime;
 	
 	// Use this for initialization
 	void Start () {
@@ -23,6 +36,20 @@ public class Element : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
-	
+		if (isAnimating) {
+			transform.position = Vector3.Lerp(startPoint, endPoint, (Time.time - startTime) / duration);
+			float distanceSqr = (transform.position - endPoint).sqrMagnitude;
+			if (distanceSqr < 0.01f) {
+				transform.position = endPoint;
+				isAnimating = false;
+			}
+		}
+	}
+
+	public void AnimateTo(Vector3 endPosition) {
+		isAnimating = true;
+		startPoint = transform.position;
+		startTime = Time.time;
+		endPoint = endPosition;
 	}
 }

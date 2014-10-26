@@ -11,7 +11,7 @@ public class PhoneDebugLog : MonoBehaviour {
 	
 	void Start()
 	{
-		Globals.Instance.GetController<InputController>().WireEvent<KeyPressEvent>(handleKeyEvent);
+		//Globals.Instance.GetController<InputController>().WireEvent<KeyPressEvent>(handleKeyEvent);
 	}
 
 	void handleKeyEvent(KeyPressEvent e)
@@ -26,6 +26,9 @@ public class PhoneDebugLog : MonoBehaviour {
 	
 	
 	void OnGUI () {
+		if (Input.GetKey(KeyCode.Escape)) {
+			myLog = "";
+		}
 		GUILayout.BeginArea(new Rect(10, 10, Screen.width-10, Screen.height/4));
 		scrollPosition = GUILayout.BeginScrollView(scrollPosition, false, false, GUILayout.Width(Screen.width-10), GUILayout.Height(Screen.height/4));
 		myLog = GUILayout.TextArea(myLog);

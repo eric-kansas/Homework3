@@ -4,19 +4,19 @@ using System.Collections;
 public class UserSelection : MonoBehaviour {
 
 	public enum SWAP_DIRECTIONS {
-		NORTH,
-		NORTH_EAST,
-		EAST,
-		SOUTH_EAST,
-		SOUTH_WEST,
-		WEST,
-		NORTH_WEST
+		NORTH_SOUTH,
+		NORTH_EAST_SOUTH_WEST,
+		EAST_WEST,
+		SOUTH_EAST_NORTH_WEST
 	};
+
+	private const float SWIPE_LENGTH = 20.0f;
+	public bool resetSelectionAfterSwipe = true;
 	
 	public BoardManager boardManager;
 	public Texture2D selectinRectTexture;
 
-	UserSelectionView selctionView;
+	private UserSelectionView selctionView;
 
 	Bounds selectionBounds = new Bounds();
 	Vector2 minTempSelection = new Vector2();
@@ -33,61 +33,79 @@ public class UserSelection : MonoBehaviour {
 	bool isSwiping = false;
 	bool isSquare = false;
 
+	int selctionTapCount = 0;
+
 	Vector3 swipeStartPosition = new Vector3();
 	
-	void Start () {
+	void Awake () {
 		selctionView = new UserSelectionView(gameObject, selectinRectTexture);
 	}
 
 	void Update () {
-		HandleTouchInput();
+		//HandleTouchInput();
 		HandleMouseInput();
 	}
 
+	/*
 	private void HandleTouchInput() {
 		if (Input.touchCount > 0) {
 			Touch touch = Input.GetTouch(0);
 			if (touch.phase == TouchPhase.Began) {
 				// Get closet grid slot
-				GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
+				GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(touch.position);
+				Debug.Log(clickedGridSlot.BoardIndex);
 				if ( clickedGridSlot != null) {
-					startingIndex = lastGridIndex = minTempSelection = maxTempSelection = clickedGridSlot.BoardIndex;		
-					isSelecting = true;
+					if (madeSelection && GridIndexIsInSelection(clickedGridSlot.BoardIndex)) {
+						isSwiping = true;
+						swipeStartPosition = touch.position;
+					} else {
+						startingIndex = lastGridIndex = minTempSelection = maxTempSelection = clickedGridSlot.BoardIndex;		
+						isSelecting = true;
+						Vector2 currentBoardIndex = clickedGridSlot.BoardIndex;
+						HandleSelection(currentBoardIndex);
+					}
 				} else {
-					selctionView.Clear();
+					ResetSelectionState();
 				}
 			} else if (touch.phase == TouchPhase.Moved) {
 				// Get closet grid slot
 				GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
 				if ( clickedGridSlot != null) {
-					Vector2 currentBoardIndex = clickedGridSlot.BoardIndex;
-					HandleSelection(currentBoardIndex);
+					if (isSelecting) {
+						Vector2 currentBoardIndex = clickedGridSlot.BoardIndex;
+						HandleSelection(currentBoardIndex);
+					}
+				}
+			} else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled) {
+				if (isSelecting) {
+					FinalizeSelection();
+				} else if (isSwiping) {
+					FinalizeSwipe(touch.position);
 				}
 			}
 		}
 	}
+	*/
 
 	private void HandleMouseInput() {
-		
 		// Left mouse click
 		if (Input.GetMouseButtonDown(0)) {
-			
 			// Get closet grid slot
 			GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
-
-			// Swipe mode
-			if (madeSelection && GridIndexIsInSelection(clickedGridSlot.BoardIndex)) {
-				isSwiping = true;
-				swipeStartPosition = Input.mousePosition;
-			} else {
-				madeSelection = false;
-				isSquare = false;
-				if ( clickedGridSlot != null) {
-					startingIndex = lastGridIndex = minTempSelection = maxTempSelection = clickedGridSlot.BoardIndex;		
-					isSelecting = true;
+			if (clickedGridSlot != null) {
+				if (madeSelection && GridIndexIsInSelection(clickedGridSlot.BoardIndex)) {
+					// Swipe mode
+					isSwiping = true;
+					swipeStartPosition = Input.mousePosition;
 				} else {
-					selctionView.Clear();
+					//New Selection
+					madeSelection = false;
+					isSquare = false;
+					isSelecting = true;
+					startingIndex = lastGridIndex = minTempSelection = maxTempSelection = clickedGridSlot.BoardIndex;
 				}
+			} else {
+				ResetSelectionState();
 			}
 		} else if (Input.GetMouseButtonUp(0)) {
 			if (isSelecting) {
@@ -100,59 +118,110 @@ public class UserSelection : MonoBehaviour {
 		if (isSelecting) {
 			// Get closet grid slot
 			GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
-			if ( clickedGridSlot != null) {
+			if (clickedGridSlot != null) {
 				Vector2 currentBoardIndex = clickedGridSlot.BoardIndex;
 				HandleSelection(currentBoardIndex);
 			}
 		}
 	}
 
+	private void ResetSelectionState() {
+		selctionView.Clear();
+		madeSelection = false;
+		isSwiping = false;
+		isSelecting = false;
+		isSquare = false;
+		selctionTapCount = 0;
+	}
+	
 	private void FinalizeSwipe(Vector3 endPosition) {
 		Vector3 delta = swipeStartPosition - endPosition;
 
-		float angle = Vector3.Angle(delta, Vector3.left);
-		float sign = Mathf.Sign(Vector3.Dot(delta, Vector3.down));
-		
-		angle = sign * angle;
-
-		if (isSquare) {
-			// East
-			if (angle < 22.5f && angle > -22.5f) { // EAST
-				Debug.Log("EAST");
-				//boardManager.performSwap();
-			} else if (angle < -22.5 && angle > -67.5f) { // South East
-				Debug.Log("SOUTH EAST");
-			} else if (angle < -67.5f && angle > -112.5f) { // South
-				Debug.Log("SOUTH");
-			} else if (angle < -112.5f && angle > -157.5f) { // South West
-				Debug.Log("SOUTH WEST");
-			} else if (angle < -157.5f || angle > 157.5f) { // West
-				Debug.Log("WEST");
-			} else if (angle > 112.5f && angle < 157.5f) { // North West
-				Debug.Log("NORTH WEST");
-			} else if (angle > 67.5f && angle < 112.5f) { // North
-				Debug.Log("NORTH");
-				boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH, minSelection, maxSelection);
-			} else if (angle > 22.5f && angle < 67.5f) { // North East
-				Debug.Log("North East");
+		// Not long enough for swipe -- treat as tap / click
+		if (delta.magnitude < SWIPE_LENGTH) {
+			GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
+			if (clickedGridSlot != null && clickedGridSlot.IsInMatch) {;
+				selctionTapCount++;
+				if (selctionTapCount == 1) {
+					boardManager.AbsorbMatch(clickedGridSlot.MatchGuid);
+					ResetSelectionState();
+				}
 			}
 		} else {
-			if (angle < 45.0f && angle > -45.0f) { // East
-				Debug.Log("EAST");
-			} else if (angle < -45.0f && angle > -135.0f) { // South
-				Debug.Log("SOUTH");
-			} else if (angle < -135.0f || angle > 135.0f) { // West
-				Debug.Log("WEST");
-			} else if (angle > 45.0f && angle < 135.0f) { // North 
-				Debug.Log("NORTH");
-				boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH, minSelection, maxSelection);
+			float angle = Vector3.Angle(delta, Vector3.left);
+			float sign = Mathf.Sign(Vector3.Dot(delta, Vector3.down));
+			
+			angle = sign * angle;
+			if (isSquare) {
+				// East
+				if (angle < 22.5f && angle > -22.5f) { // EAST
+					Debug.Log("EAST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.EAST_WEST, minSelection, maxSelection);
+				} else if (angle < -22.5 && angle > -67.5f) { // South East
+					Debug.Log("SOUTH EAST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.SOUTH_EAST_NORTH_WEST, minSelection, maxSelection);
+				} else if (angle < -67.5f && angle > -112.5f) { // South
+					Debug.Log("SOUTH");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_SOUTH, minSelection, maxSelection);
+				} else if (angle < -112.5f && angle > -157.5f) { // South West
+					Debug.Log("SOUTH WEST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_EAST_SOUTH_WEST, minSelection, maxSelection);
+				} else if (angle < -157.5f || angle > 157.5f) { // West
+					Debug.Log("WEST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.EAST_WEST, minSelection, maxSelection);
+				} else if (angle > 112.5f && angle < 157.5f) { // North West
+					Debug.Log("NORTH WEST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.SOUTH_EAST_NORTH_WEST, minSelection, maxSelection);
+				} else if (angle > 67.5f && angle < 112.5f) { // North
+					Debug.Log("NORTH");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_SOUTH, minSelection, maxSelection);
+				} else if (angle > 22.5f && angle < 67.5f) { // North East
+					Debug.Log("North East");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_EAST_SOUTH_WEST, minSelection, maxSelection);
+				}
+			} else {
+				if (angle < 45.0f && angle > -45.0f) { // East
+					Debug.Log("EAST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.EAST_WEST, minSelection, maxSelection);
+				} else if (angle < -45.0f && angle > -135.0f) { // South
+					Debug.Log("SOUTH");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_SOUTH, minSelection, maxSelection);
+				} else if (angle < -135.0f || angle > 135.0f) { // West
+					Debug.Log("WEST");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.EAST_WEST, minSelection, maxSelection);
+				} else if (angle > 45.0f && angle < 135.0f) { // North 
+					Debug.Log("NORTH");
+					boardManager.PerformSwap(SWAP_DIRECTIONS.NORTH_SOUTH, minSelection, maxSelection);
+				}
+			}
+
+			if (resetSelectionAfterSwipe) {
+				ResetSelectionState();
 			}
 		}
 	}
 
 	private void FinalizeSelection() {
+		if (minTempSelection == maxTempSelection) {
+			// Get closet grid slot
+			GridSlot clickedGridSlot = boardManager.GetClosestGridSlotToPoint(Input.mousePosition);
+			if (clickedGridSlot != null && clickedGridSlot.IsInMatch) {
+				MatchGroup match = MatchManager.matches[clickedGridSlot.MatchGuid];
+
+				Vector2 tempMin = match.Data.Group.MinIndex;
+				Vector2 tempMax = match.Data.Group.MaxIndex;
+
+				// New Selection
+				startingIndex = lastGridIndex = minTempSelection = maxTempSelection = tempMin;
+				HandleSelection(tempMax);
+			} else {
+				ResetSelectionState();
+				return;
+			}
+		}
 		isSelecting = false;
 		madeSelection = true;
+
 		minSelection = minTempSelection;
 		maxSelection = maxTempSelection;
 		
@@ -193,12 +262,14 @@ public class UserSelection : MonoBehaviour {
 		} else {
 			minTempSelection.y = maxTempSelection.y = currentBoardIndex.y;
 		}
+
+		//Board reads top-bottom from left to right -- math reads bottom to top left to right
+		Vector2 bottomLeftIndex = new Vector2(minTempSelection.x, maxTempSelection.y);
+		Vector2 topRightIndex = new Vector2(maxTempSelection.x, minTempSelection.y);
+		Vector3 bottomLeftPosition = BoardManager.GetGridSlotAtIndex(bottomLeftIndex).Boundary.min;
+		Vector3 topRightPosition = BoardManager.GetGridSlotAtIndex(topRightIndex).Boundary.max;
 		
-		
-		Vector3 topLeftPosition = boardManager.GetGridSlotAtIndex(minTempSelection).Boundary.min;
-		Vector3 bottomRightPosition = boardManager.GetGridSlotAtIndex(maxTempSelection).Boundary.max;
-		
-		selctionView.updateSelection(topLeftPosition, bottomRightPosition);
+		selctionView.updateSelection(bottomLeftPosition, topRightPosition);
 		
 		lastGridIndex = currentBoardIndex;
 	}

@@ -3,7 +3,6 @@ using UnityEngine;
 public class UserSelectionView
 {
 	GUITexture selectionUIGraphic;
-	Vector3 topLeftPosition = new Vector3();
 
 	public UserSelectionView (GameObject gameObject, Texture2D selectinRectTexture)
 	{
@@ -19,11 +18,9 @@ public class UserSelectionView
 	}
 
 	public void updateSelection(Vector3 minPosition, Vector3 maxPosition) {
-		minPosition.y *= -1;
 		minPosition = Camera.main.WorldToViewportPoint(minPosition);
-		maxPosition.y *= -1;
 		maxPosition = Camera.main.WorldToViewportPoint(maxPosition);
-		
+	
 		// Clear selection graphic scale
 		selectionUIGraphic.transform.localScale = new Vector3();
 
